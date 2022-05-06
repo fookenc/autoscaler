@@ -21,7 +21,6 @@ import (
 	"time"
 
 	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/autoscaler/cluster-autoscaler/utils/deletetaint"
 )
 
 // IsNodeReadyAndSchedulable returns true if the node is ready and schedulable.
@@ -73,7 +72,6 @@ func GetReadinessState(node *apiv1.Node) (isNodeReady bool, lastTransitionTime t
 		apiv1.TaintNodeNotReady:           true,
 		apiv1.TaintNodeDiskPressure:       true,
 		apiv1.TaintNodeNetworkUnavailable: true,
-		deletetaint.ToBeDeletedTaint:      true,
 	}
 	for _, taint := range node.Spec.Taints {
 		if notReadyTaints[taint.Key] {
