@@ -18,7 +18,7 @@ package clusterstate
 
 import (
 	"fmt"
-        "testing"
+	"testing"
 	"time"
 
 	"k8s.io/autoscaler/cluster-autoscaler/metrics"
@@ -29,7 +29,7 @@ import (
 	"k8s.io/autoscaler/cluster-autoscaler/clusterstate/api"
 	"k8s.io/autoscaler/cluster-autoscaler/clusterstate/utils"
 	"k8s.io/autoscaler/cluster-autoscaler/utils/deletetaint"
-        . "k8s.io/autoscaler/cluster-autoscaler/utils/test"
+	. "k8s.io/autoscaler/cluster-autoscaler/utils/test"
 	"k8s.io/client-go/kubernetes/fake"
 	kube_record "k8s.io/client-go/tools/record"
 
@@ -483,24 +483,23 @@ func TestUpcomingNodes(t *testing.T) {
 	provider.AddNodeGroup("ng4", 1, 10, 1)
 	provider.AddNode("ng4", ng4_1)
 
-	
-        // One node is already there, for a second node deletion / draining was already started.
-        ng5_1 := BuildTestNode("ng5-1", 1000, 1000)
-        SetNodeReadyState(ng5_1, true, now.Add(-time.Minute))
-        ng5_2 := BuildTestNode("ng5-2", 1000, 1000)
-        SetNodeReadyState(ng5_2, true, now.Add(-time.Minute))
-        ng5_2.Spec.Taints = []apiv1.Taint{
-                {
-                        Key:    deletetaint.ToBeDeletedTaint,
-                        Value:  fmt.Sprint(time.Now().Unix()),
-                        Effect: apiv1.TaintEffectNoSchedule,
-                },
-        }
-        provider.AddGroup("ng5", 1, 10, 2)
-        provider.AddNode("ng5", ng5_1)
-        provider.AddNode("ng5", ng5_2)
+	// One node is already there, for a second node deletion / draining was already started.
+	ng5_1 := BuildTestNode("ng5-1", 1000, 1000)
+	SetNodeReadyState(ng5_1, true, now.Add(-time.Minute))
+	ng5_2 := BuildTestNode("ng5-2", 1000, 1000)
+	SetNodeReadyState(ng5_2, true, now.Add(-time.Minute))
+	ng5_2.Spec.Taints = []apiv1.Taint{
+		{
+			Key:    deletetaint.ToBeDeletedTaint,
+			Value:  fmt.Sprint(time.Now().Unix()),
+			Effect: apiv1.TaintEffectNoSchedule,
+		},
+	}
+	provider.AddNodeGroup("ng5", 1, 10, 2)
+	provider.AddNode("ng5", ng5_1)
+	provider.AddNode("ng5", ng5_2)
 
-        assert.NotNil(t, provider)
+	assert.NotNil(t, provider)
 	fakeClient := &fake.Clientset{}
 	fakeLogRecorder, _ := utils.NewStatusMapRecorder(fakeClient, "kube-system", kube_record.NewFakeRecorder(5), false)
 	clusterstate := NewClusterStateRegistry(provider, ClusterStateRegistryConfig{
@@ -516,7 +515,7 @@ func TestUpcomingNodes(t *testing.T) {
 	assert.Equal(t, 1, upcomingNodes["ng2"])
 	assert.Equal(t, 2, upcomingNodes["ng3"])
 	assert.NotContains(t, upcomingNodes, "ng4")
-        assert.NotContains(t, upcomingNodes, "ng5")
+	assert.NotContains(t, upcomingNodes, "ng5")
 }
 
 func TestIncorrectSize(t *testing.T) {
@@ -588,6 +587,44 @@ func TestUnregisteredNodes(t *testing.T) {
 	err = clusterstate.UpdateNodes([]*apiv1.Node{ng1_1, ng1_2}, nil, time.Now().Add(time.Minute))
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(clusterstate.GetUnregisteredNodes()))
+}
+
+func TestCloudProviderDeletedNodes(t *testing.T) {
+	ng1_1 := BuildTestNode("ng1-1", 1000, 1000)
+	ng1_1.Spec.ProviderID = "ng1-1"
+	ng1_2 := BuildTestNode("ng1-2", 1000, 1000)
+	ng1_2.Spec.ProviderID = "ng1-2"
+	provider := testprovider.NewTestCloudProvider(nil, nil)
+	provider.AddNodeGroup("ng1", 1, 10, 2)
+	provider.AddNode("ng1", ng1_1)
+	provider.AddNode("ng1", ng1_2)
+
+	fakeClient := &fake.Clientset{}
+	fakeLogRecorder, _ := utils.NewStatusMapRecorder(fakeClient, "kube-system", kube_record.NewFakeRecorder(5), false)
+	clusterstate := NewClusterStateRegistry(provider, ClusterStateRegistryConfig{
+		MaxTotalUnreadyPercentage: 10,
+		OkTotalUnreadyCount:       1,
+		MaxNodeProvisionTime:      10 * time.Second,
+	}, fakeLogRecorder, newBackoff())
+	err := clusterstate.UpdateNodes([]*apiv1.Node{ng1_1, ng1_2}, nil, time.Now().Add(-time.Minute))
+
+	// Nodes are registered correctly between Kubernetes and cloud provider.
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(clusterstate.GetCloudProviderDeletedNodes()))
+
+	// The node was removed from Cloud Provider
+	// should be counted as Deleted by cluster state
+	provider.DeleteNode(ng1_2)
+	err = clusterstate.UpdateNodes([]*apiv1.Node{ng1_1, ng1_2}, nil, time.Now().Add(time.Minute))
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(clusterstate.GetCloudProviderDeletedNodes()))
+	assert.Equal(t, "ng1-2", clusterstate.GetUnregisteredNodes()[0].Node.Name)
+	assert.Equal(t, 1, clusterstate.GetClusterReadiness().Deleted)
+
+	// The node is removed from Kubernetes
+	err = clusterstate.UpdateNodes([]*apiv1.Node{ng1_1}, nil, time.Now().Add(time.Minute))
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(clusterstate.GetCloudProviderDeletedNodes()))
 }
 
 func TestUpdateLastTransitionTimes(t *testing.T) {

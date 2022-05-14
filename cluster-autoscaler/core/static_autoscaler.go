@@ -532,6 +532,9 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time) errors.AutoscalerError
 			if scaleDownStatus.Result == status.ScaleDownNodeDeleteStarted {
 				a.lastScaleDownDeleteTime = currentTime
 				a.clusterStateRegistry.Recalculate()
+				for _, scaledDownNode := range scaleDownStatus.ScaledDownNodes {
+					a.clusterStateRegistry.InvalidateNodeInstancesCacheEntry(scaledDownNode.NodeGroup)
+				}
 			}
 
 			if (scaleDownStatus.Result == status.ScaleDownNoNodeDeleted ||

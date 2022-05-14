@@ -108,10 +108,10 @@ type UnregisteredNode struct {
 	UnregisteredSince time.Time
 }
 
-// DeletedNode contains information about nodes that have been removed from cluster provider side
+// DeletedNode contains information about nodes that have been removed from cloud provider side
 // but are still registered in Kubernetes.
 type DeletedNode struct {
-	// Node is a dummy node that contains only the name of the node.
+	// Node still registered in Kubernetes.
 	Node *apiv1.Node
 	// DeletedSince is the time when the node was detected as deleted.
 	DeletedSince time.Time
@@ -171,6 +171,7 @@ func NewClusterStateRegistry(cloudProvider cloudprovider.CloudProvider, config C
 		acceptableRanges:                make(map[string]AcceptableRange),
 		incorrectNodeGroupSizes:         make(map[string]IncorrectNodeGroupSize),
 		unregisteredNodes:               make(map[string]UnregisteredNode),
+		deletedNodes:                    make(map[string]DeletedNode),
 		candidatesForScaleDown:          make(map[string][]string),
 		backoff:                         backoff,
 		lastStatus:                      emptyStatus,
@@ -314,7 +315,7 @@ func (csr *ClusterStateRegistry) UpdateNodes(nodes []*apiv1.Node, nodeInfosForGr
 		return err
 	}
 	notRegistered := getNotRegisteredNodes(nodes, cloudProviderNodeInstances, currentTime)
-	clusterProviderNodesRemoved := getClusterProviderDeletedNodes(nodes, cloudProviderNodeInstances, currentTime)
+	cloudProviderNodesRemoved := getCloudProviderDeletedNodes(nodes, cloudProviderNodeInstances, currentTime)
 	csr.Lock()
 	defer csr.Unlock()
 
@@ -324,7 +325,7 @@ func (csr *ClusterStateRegistry) UpdateNodes(nodes []*apiv1.Node, nodeInfosForGr
 	csr.cloudProviderNodeInstances = cloudProviderNodeInstances
 
 	csr.updateUnregisteredNodes(notRegistered)
-	csr.updateClusterProviderDeletedNodes(clusterProviderNodesRemoved)
+	csr.updateCloudProviderDeletedNodes(cloudProviderNodesRemoved)
 	csr.updateReadinessStats(currentTime)
 
 	// update acceptable ranges based on requests from last loop and targetSizes
@@ -676,7 +677,7 @@ func (csr *ClusterStateRegistry) GetUnregisteredNodes() []UnregisteredNode {
 	return result
 }
 
-func (csr *ClusterStateRegistry) updateClusterProviderDeletedNodes(deletedNodes []DeletedNode) {
+func (csr *ClusterStateRegistry) updateCloudProviderDeletedNodes(deletedNodes []DeletedNode) {
 	result := make(map[string]DeletedNode)
 	for _, deleted := range deletedNodes {
 		if prev, found := csr.deletedNodes[deleted.Node.Name]; found {
@@ -688,12 +689,12 @@ func (csr *ClusterStateRegistry) updateClusterProviderDeletedNodes(deletedNodes 
 	csr.deletedNodes = result
 }
 
-//GetClusterProviderDeletedNodes returns a list of all nodes removed from cluster provider but registered in Kubernetes.
-func (csr *ClusterStateRegistry) GetClusterProviderDeletedNodes() []DeletedNode {
+//GetCloudProviderDeletedNodes returns a list of all nodes removed from cluster provider but registered in Kubernetes.
+func (csr *ClusterStateRegistry) GetCloudProviderDeletedNodes() []DeletedNode {
 	csr.Lock()
 	defer csr.Unlock()
 
-	result := make([]DeletedNode, 0, len(csr.unregisteredNodes))
+	result := make([]DeletedNode, 0, len(csr.deletedNodes))
 	for _, deleted := range csr.deletedNodes {
 		result = append(result, deleted)
 	}
@@ -987,8 +988,8 @@ func getNotRegisteredNodes(allNodes []*apiv1.Node, cloudProviderNodeInstances ma
 	return notRegistered
 }
 
-// Calculates which of the registered nodes in Kubernetes do not exist in cluster provider.
-func getClusterProviderDeletedNodes(allNodes []*apiv1.Node, cloudProviderNodeInstances map[string][]cloudprovider.Instance, time time.Time) []DeletedNode {
+// Calculates which of the registered nodes in Kubernetes that do not exist in cloud provider.
+func getCloudProviderDeletedNodes(allNodes []*apiv1.Node, cloudProviderNodeInstances map[string][]cloudprovider.Instance, time time.Time) []DeletedNode {
 	cloudRegistered := sets.NewString()
 	for _, instances := range cloudProviderNodeInstances {
 		for _, instance := range instances {
