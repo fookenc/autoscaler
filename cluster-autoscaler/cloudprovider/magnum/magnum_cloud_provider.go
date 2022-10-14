@@ -135,6 +135,11 @@ func (mcp *magnumCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovide
 	return nil, nil
 }
 
+// IsNodeDeleted returns whether node exists in this cloud provider
+func (mcp *magnumCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+	return false, cloudprovider.ErrNotImplemented
+}
+
 // Pricing is not implemented.
 func (mcp *magnumCloudProvider) Pricing() (cloudprovider.PricingModel, errors.AutoscalerError) {
 	return nil, cloudprovider.ErrNotImplemented

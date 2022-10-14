@@ -127,6 +127,11 @@ func (ali *aliCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovider.N
 	return ali.manager.GetAsgForInstance(instanceId)
 }
 
+// IsNodeDeleted returns whether node exists in this cloud provider
+func (ali *aliCloudProvider) IsNodeDeleted(*apiv1.Node) (bool, error) {
+	return false, cloudprovider.ErrNotImplemented
+}
+
 // Pricing returns pricing model for this cloud provider or error if not available.
 func (ali *aliCloudProvider) Pricing() (cloudprovider.PricingModel, errors.AutoscalerError) {
 	return nil, cloudprovider.ErrNotImplemented

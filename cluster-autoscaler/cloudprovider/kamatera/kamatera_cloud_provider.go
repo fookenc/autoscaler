@@ -70,6 +70,11 @@ func (k *kamateraCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovide
 	return nil, nil
 }
 
+// IsNodeDeleted returns whether node exists in this cloud provider
+func (k *kamateraCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+	return false, cloudprovider.ErrNotImplemented
+}
+
 // Pricing returns pricing model for this cloud provider or error if not available.
 // Implementation optional.
 func (k *kamateraCloudProvider) Pricing() (cloudprovider.PricingModel, errors.AutoscalerError) {

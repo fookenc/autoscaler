@@ -232,6 +232,11 @@ func (ic *IonosCloudCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprov
 	return nil, nil
 }
 
+// IsNodeDeleted returns whether node exists in this cloud provider
+func (ic *IonosCloudCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+	return false, cloudprovider.ErrNotImplemented
+}
+
 // Pricing returns pricing model for this cloud provider or error if not
 // available. Implementation optional.
 func (ic *IonosCloudCloudProvider) Pricing() (cloudprovider.PricingModel, errors.AutoscalerError) {

@@ -17,6 +17,7 @@ limitations under the License.
 package clusterstate
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -121,6 +122,7 @@ type ClusterStateRegistry struct {
 	acceptableRanges                   map[string]AcceptableRange
 	incorrectNodeGroupSizes            map[string]IncorrectNodeGroupSize
 	unregisteredNodes                  map[string]UnregisteredNode
+	deletedNodes                       map[string]*apiv1.Node
 	candidatesForScaleDown             map[string][]string
 	backoff                            backoff.Backoff
 	lastStatus                         *api.ClusterAutoscalerStatus
@@ -153,6 +155,7 @@ func NewClusterStateRegistry(cloudProvider cloudprovider.CloudProvider, config C
 		acceptableRanges:                make(map[string]AcceptableRange),
 		incorrectNodeGroupSizes:         make(map[string]IncorrectNodeGroupSize),
 		unregisteredNodes:               make(map[string]UnregisteredNode),
+		deletedNodes:                    make(map[string]*apiv1.Node),
 		candidatesForScaleDown:          make(map[string][]string),
 		backoff:                         backoff,
 		lastStatus:                      emptyStatus,
@@ -295,6 +298,7 @@ func (csr *ClusterStateRegistry) UpdateNodes(nodes []*apiv1.Node, nodeInfosForGr
 	if err != nil {
 		return err
 	}
+	cloudProviderNodesRemoved := csr.getCloudProviderDeletedNodes(nodes, cloudProviderNodeInstances)
 	notRegistered := getNotRegisteredNodes(nodes, cloudProviderNodeInstances, currentTime)
 
 	csr.Lock()
@@ -306,6 +310,7 @@ func (csr *ClusterStateRegistry) UpdateNodes(nodes []*apiv1.Node, nodeInfosForGr
 	csr.cloudProviderNodeInstances = cloudProviderNodeInstances
 
 	csr.updateUnregisteredNodes(notRegistered)
+	csr.updateCloudProviderDeletedNodes(cloudProviderNodesRemoved)
 	csr.updateReadinessStats(currentTime)
 
 	// update acceptable ranges based on requests from last loop and targetSizes
@@ -541,7 +546,7 @@ func (csr *ClusterStateRegistry) updateReadinessStats(currentTime time.Time) {
 
 	update := func(current Readiness, node *apiv1.Node, nr kube_util.NodeReadiness) Readiness {
 		current.Registered++
-		if deletetaint.HasToBeDeletedTaint(node) {
+		if _, isDeleted := csr.deletedNodes[node.Name]; isDeleted {
 			current.Deleted++
 		} else if nr.Ready {
 			current.Ready++
@@ -665,6 +670,30 @@ func (csr *ClusterStateRegistry) GetUnregisteredNodes() []UnregisteredNode {
 	result := make([]UnregisteredNode, 0, len(csr.unregisteredNodes))
 	for _, unregistered := range csr.unregisteredNodes {
 		result = append(result, unregistered)
+	}
+	return result
+}
+
+func (csr *ClusterStateRegistry) updateCloudProviderDeletedNodes(deletedNodes []*apiv1.Node) {
+	result := make(map[string]*apiv1.Node)
+	for _, deleted := range deletedNodes {
+		if prev, found := csr.deletedNodes[deleted.Name]; found {
+			result[deleted.Name] = prev
+		} else {
+			result[deleted.Name] = deleted
+		}
+	}
+	csr.deletedNodes = result
+}
+
+//GetCloudProviderDeletedNodes returns a list of all nodes removed from cloud provider but registered in Kubernetes.
+func (csr *ClusterStateRegistry) GetCloudProviderDeletedNodes() []*apiv1.Node {
+	csr.Lock()
+	defer csr.Unlock()
+
+	result := make([]*apiv1.Node, 0, len(csr.deletedNodes))
+	for _, deleted := range csr.deletedNodes {
+		result = append(result, deleted)
 	}
 	return result
 }
@@ -956,6 +985,72 @@ func getNotRegisteredNodes(allNodes []*apiv1.Node, cloudProviderNodeInstances ma
 		}
 	}
 	return notRegistered
+}
+
+// Calculates which of the registered nodes in Kubernetes that do not exist in cloud provider.
+func (csr *ClusterStateRegistry) getCloudProviderDeletedNodes(allNodes []*apiv1.Node, cloudProviderNodeInstances map[string][]cloudprovider.Instance) []*apiv1.Node {
+	nodesRemoved := make([]*apiv1.Node, 0)
+	currentCloudInstances := make(map[string]string, 0)
+	registeredNodes := make(map[string]*apiv1.Node, 0)
+	isNodeDeletedNotImplemented := true
+	if len(allNodes) > 0 {
+		_, err := csr.cloudProvider.IsNodeDeleted(allNodes[0])
+		// Check if the cloud provider implements isNodeDeleted
+		isNodeDeletedNotImplemented = errors.Is(err, cloudprovider.ErrNotImplemented)
+		if isNodeDeletedNotImplemented {
+			// Fall-back to taint-based node deletion
+			for _, node := range allNodes {
+				if deletetaint.HasToBeDeletedTaint(node) {
+					nodesRemoved = append(nodesRemoved, node)
+				}
+			}
+		} else {
+			for nodeGroupName, instances := range cloudProviderNodeInstances {
+				for _, instance := range instances {
+					currentCloudInstances[instance.Id] = nodeGroupName
+				}
+			}
+			for _, node := range allNodes {
+				registeredNodes[node.Name] = node
+			}
+
+			// Fill previously deleted nodes, if they are still registered in Kubernetes
+			for nodeName, node := range csr.deletedNodes {
+				// Safety check to prevent flagging Kubernetes nodes as deleted
+				// if the Cloud Provider instance is re-discovered
+				_, cloudProviderFound := currentCloudInstances[node.Name]
+				if _, found := registeredNodes[nodeName]; found && !cloudProviderFound {
+					// Confirm that node is deleted by cloud provider, instead of
+					// a not-autoscaled node
+					isDeleted, err := csr.cloudProvider.IsNodeDeleted(node)
+					if err == nil && isDeleted {
+						nodesRemoved = append(nodesRemoved, node)
+					}
+				}
+			}
+
+			// Seek nodes that may have been deleted since last update
+			// cloudProviderNodeInstances are retrieved by nodeGroup,
+			// not autoscaled nodes will be excluded
+			for _, instances := range csr.cloudProviderNodeInstances {
+				for _, instance := range instances {
+					if _, found := currentCloudInstances[instance.Id]; !found {
+						// Check Kubernetes registered nodes for corresponding deleted
+						// Cloud Provider instance
+						if kubeNode, kubeNodeFound := registeredNodes[instance.Id]; kubeNodeFound {
+							// Confirm that node is deleted by cloud provider, instead of
+							// a not-autoscaled node
+							isDeleted, err := csr.cloudProvider.IsNodeDeleted(kubeNode)
+							if err == nil && isDeleted {
+								nodesRemoved = append(nodesRemoved, kubeNode)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return nodesRemoved
 }
 
 // GetAutoscaledNodesCount calculates and returns the actual and the target number of nodes

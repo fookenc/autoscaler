@@ -171,6 +171,11 @@ func (provider *RancherCloudProvider) NodeGroupForNode(node *corev1.Node) (cloud
 	return nil, nil
 }
 
+// IsNodeDeleted returns whether node exists in this cloud provider
+func (provider *RancherCloudProvider) IsNodeDeleted(node *corev1.Node) (bool, error) {
+	return false, cloudprovider.ErrNotImplemented
+}
+
 // GetAvailableMachineTypes get all machine types that can be requested from the cloud provider.
 // Implementation optional.
 func (provider *RancherCloudProvider) GetAvailableMachineTypes() ([]string, error) {

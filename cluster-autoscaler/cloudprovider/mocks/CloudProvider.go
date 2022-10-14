@@ -177,6 +177,11 @@ func (_m *CloudProvider) NodeGroupForNode(_a0 *v1.Node) (cloudprovider.NodeGroup
 	return r0, r1
 }
 
+// IsNodeDeleted returns whether node exists in this cloud provider
+func (_m *CloudProvider) IsNodeDeleted(_a0 *v1.Node) (bool, error) {
+	return false, cloudprovider.ErrNotImplemented
+}
+
 // NodeGroups provides a mock function with given fields:
 func (_m *CloudProvider) NodeGroups() []cloudprovider.NodeGroup {
 	ret := _m.Called()

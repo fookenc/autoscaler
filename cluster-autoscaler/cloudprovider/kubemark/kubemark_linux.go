@@ -139,6 +139,11 @@ func (kubemark *KubemarkCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloud
 	return nil, nil
 }
 
+// IsNodeDeleted returns whether node exists in this cloud provider
+func (kubemark *KubemarkCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+	return false, cloudprovider.ErrNotImplemented
+}
+
 // GetAvailableMachineTypes get all machine types that can be requested from the cloud provider.
 // Implementation optional.
 func (kubemark *KubemarkCloudProvider) GetAvailableMachineTypes() ([]string, error) {

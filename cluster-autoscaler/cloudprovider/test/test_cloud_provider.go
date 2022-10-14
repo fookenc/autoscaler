@@ -41,6 +41,9 @@ type OnNodeGroupCreateFunc func(string) error
 // OnNodeGroupDeleteFunc is a function called when a node group is deleted.
 type OnNodeGroupDeleteFunc func(string) error
 
+// IsNodeDeleted is a function called to determine if a node has been removed from the cloud provider.
+type IsNodeDeleted func(string) (bool, error)
+
 // TestCloudProvider is a dummy cloud provider to be used in tests.
 type TestCloudProvider struct {
 	sync.Mutex
@@ -50,6 +53,7 @@ type TestCloudProvider struct {
 	onScaleDown       func(string, string) error
 	onNodeGroupCreate func(string) error
 	onNodeGroupDelete func(string) error
+	isNodeDeleted     func(string) (bool, error)
 	machineTypes      []string
 	machineTemplates  map[string]*schedulerframework.NodeInfo
 	priceModel        cloudprovider.PricingModel
@@ -81,6 +85,19 @@ func NewTestAutoprovisioningCloudProvider(onScaleUp OnScaleUpFunc, onScaleDown O
 		machineTypes:      machineTypes,
 		machineTemplates:  machineTemplates,
 		resourceLimiter:   cloudprovider.NewResourceLimiter(make(map[string]int64), make(map[string]int64)),
+	}
+}
+
+// NewTestNodeDeletionDetectionCloudProvider builds new TestCloudProvider with deletion detection support
+func NewTestNodeDeletionDetectionCloudProvider(onScaleUp OnScaleUpFunc, onScaleDown OnScaleDownFunc,
+	deleted IsNodeDeleted) *TestCloudProvider {
+	return &TestCloudProvider{
+		nodes:           make(map[string]string),
+		groups:          make(map[string]cloudprovider.NodeGroup),
+		onScaleUp:       onScaleUp,
+		onScaleDown:     onScaleDown,
+		isNodeDeleted:   deleted,
+		resourceLimiter: cloudprovider.NewResourceLimiter(make(map[string]int64), make(map[string]int64)),
 	}
 }
 
@@ -138,6 +155,17 @@ func (tcp *TestCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovider.
 		return nil, nil
 	}
 	return group, nil
+}
+
+func (tcp *TestCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+	tcp.Lock()
+	defer tcp.Unlock()
+	if tcp.isNodeDeleted != nil {
+		return tcp.isNodeDeleted(node.Name)
+	} else {
+		_, found := tcp.nodes[node.Name]
+		return !found, nil
+	}
 }
 
 // Pricing returns pricing model for this cloud provider or error if not available.
@@ -251,6 +279,14 @@ func (tcp *TestCloudProvider) AddNode(nodeGroupId string, node *apiv1.Node) {
 	defer tcp.Unlock()
 
 	tcp.nodes[node.Name] = nodeGroupId
+}
+
+// DeleteNode delete the given node from the provider.
+func (tcp *TestCloudProvider) DeleteNode(node *apiv1.Node) {
+	tcp.Lock()
+	defer tcp.Unlock()
+
+	delete(tcp.nodes, node.Name)
 }
 
 // GetResourceLimiter returns struct containing limits (max, min) for resources (cores, memory etc.).
