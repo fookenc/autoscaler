@@ -157,15 +157,17 @@ func (tcp *TestCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovider.
 	return group, nil
 }
 
+// IsNodeDeleted returns true if the node no longer exists in cloud provider,
+// or ErrNotImplemented to fall back to taint-based node deletion in clusterstate
+// readiness calculation.
 func (tcp *TestCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
 	tcp.Lock()
 	defer tcp.Unlock()
 	if tcp.isNodeDeleted != nil {
 		return tcp.isNodeDeleted(node.Name)
-	} else {
-		_, found := tcp.nodes[node.Name]
-		return !found, nil
 	}
+	_, found := tcp.nodes[node.Name]
+	return !found, nil
 }
 
 // Pricing returns pricing model for this cloud provider or error if not available.
