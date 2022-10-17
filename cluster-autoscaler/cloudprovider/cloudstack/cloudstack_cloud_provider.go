@@ -68,8 +68,8 @@ func (provider *cloudStackCloudProvider) NodeGroupForNode(node *v1.Node) (cloudp
 	return provider.manager.clusterForNode(node)
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (provider *cloudStackCloudProvider) IsNodeDeleted(node *v1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (provider *cloudStackCloudProvider) NodeExists(node *v1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

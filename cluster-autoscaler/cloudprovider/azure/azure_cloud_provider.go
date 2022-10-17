@@ -106,8 +106,8 @@ func (azure *AzureCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovid
 	return azure.azureManager.GetNodeGroupForInstance(ref)
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (azure *AzureCloudProvider) IsNodeDeleted(*apiv1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (azure *AzureCloudProvider) NodeExists(*apiv1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

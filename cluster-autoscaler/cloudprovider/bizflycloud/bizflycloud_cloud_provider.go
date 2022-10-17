@@ -104,8 +104,8 @@ func (d *bizflycloudCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprov
 	return nil, nil
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (d *bizflycloudCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (d *bizflycloudCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

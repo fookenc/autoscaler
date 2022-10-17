@@ -81,8 +81,8 @@ func (b *brightboxCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovid
 	return nil, nil
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (b *brightboxCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (b *brightboxCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

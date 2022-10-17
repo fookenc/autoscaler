@@ -232,8 +232,8 @@ func (ic *IonosCloudCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprov
 	return nil, nil
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (ic *IonosCloudCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (ic *IonosCloudCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

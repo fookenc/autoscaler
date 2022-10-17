@@ -123,8 +123,8 @@ func (hcp *huaweicloudCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudpr
 	return hcp.cloudServiceManager.GetAsgForInstance(instanceID)
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (hcp *huaweicloudCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (hcp *huaweicloudCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

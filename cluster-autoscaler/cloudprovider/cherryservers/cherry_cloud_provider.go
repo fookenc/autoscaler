@@ -122,8 +122,8 @@ func (ccp *cherryCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovide
 	return nil, nil
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (ccp *cherryCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (ccp *cherryCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

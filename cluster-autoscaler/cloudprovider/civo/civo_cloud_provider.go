@@ -99,8 +99,8 @@ func (d *civoCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovider.No
 	return nil, nil
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (d *civoCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (d *civoCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

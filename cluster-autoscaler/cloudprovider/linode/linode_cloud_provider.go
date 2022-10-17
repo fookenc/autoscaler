@@ -67,9 +67,9 @@ func (l *linodeCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovider.
 	return nil, nil
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (l *linodeCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
-	return false, cloudprovider.ErrNotImplemented
+// NodeExists returns whether node exists in this cloud provider
+func (l *linodeCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
+	return true, cloudprovider.ErrNotImplemented
 }
 
 // Pricing returns pricing model for this cloud provider or error if not available.

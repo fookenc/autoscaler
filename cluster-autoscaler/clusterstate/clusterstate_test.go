@@ -520,7 +520,7 @@ func TestUpcomingNodes(t *testing.T) {
 }
 
 func TestTaintBasedNodeDeletion(t *testing.T) {
-	// Create a new Cloud Provider that does not implement the IsNodeDeleted check
+	// Create a new Cloud Provider that does not implement the NodeExists check
 	// it will return the ErrNotImplemented error instead.
 	provider := testprovider.NewTestNodeDeletionDetectionCloudProvider(nil, nil,
 		func(string) (bool, error) { return false, cloudprovider.ErrNotImplemented })

@@ -131,8 +131,8 @@ func (e *exoscaleCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovide
 	return nodeGroup, nil
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (e *exoscaleCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (e *exoscaleCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

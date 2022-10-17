@@ -41,8 +41,8 @@ type OnNodeGroupCreateFunc func(string) error
 // OnNodeGroupDeleteFunc is a function called when a node group is deleted.
 type OnNodeGroupDeleteFunc func(string) error
 
-// IsNodeDeleted is a function called to determine if a node has been removed from the cloud provider.
-type IsNodeDeleted func(string) (bool, error)
+// NodeExists is a function called to determine if a node has been removed from the cloud provider.
+type NodeExists func(string) (bool, error)
 
 // TestCloudProvider is a dummy cloud provider to be used in tests.
 type TestCloudProvider struct {
@@ -53,7 +53,7 @@ type TestCloudProvider struct {
 	onScaleDown       func(string, string) error
 	onNodeGroupCreate func(string) error
 	onNodeGroupDelete func(string) error
-	isNodeDeleted     func(string) (bool, error)
+	nodeExists        func(string) (bool, error)
 	machineTypes      []string
 	machineTemplates  map[string]*schedulerframework.NodeInfo
 	priceModel        cloudprovider.PricingModel
@@ -90,13 +90,13 @@ func NewTestAutoprovisioningCloudProvider(onScaleUp OnScaleUpFunc, onScaleDown O
 
 // NewTestNodeDeletionDetectionCloudProvider builds new TestCloudProvider with deletion detection support
 func NewTestNodeDeletionDetectionCloudProvider(onScaleUp OnScaleUpFunc, onScaleDown OnScaleDownFunc,
-	deleted IsNodeDeleted) *TestCloudProvider {
+	deleted NodeExists) *TestCloudProvider {
 	return &TestCloudProvider{
 		nodes:           make(map[string]string),
 		groups:          make(map[string]cloudprovider.NodeGroup),
 		onScaleUp:       onScaleUp,
 		onScaleDown:     onScaleDown,
-		isNodeDeleted:   deleted,
+		nodeExists:      deleted,
 		resourceLimiter: cloudprovider.NewResourceLimiter(make(map[string]int64), make(map[string]int64)),
 	}
 }
@@ -157,17 +157,17 @@ func (tcp *TestCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovider.
 	return group, nil
 }
 
-// IsNodeDeleted returns true if the node no longer exists in cloud provider,
+// NodeExists returns true if the node is available in cloud provider,
 // or ErrNotImplemented to fall back to taint-based node deletion in clusterstate
 // readiness calculation.
-func (tcp *TestCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+func (tcp *TestCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
 	tcp.Lock()
 	defer tcp.Unlock()
-	if tcp.isNodeDeleted != nil {
-		return tcp.isNodeDeleted(node.Name)
+	if tcp.nodeExists != nil {
+		return tcp.nodeExists(node.Name)
 	}
 	_, found := tcp.nodes[node.Name]
-	return !found, nil
+	return found, nil
 }
 
 // Pricing returns pricing model for this cloud provider or error if not available.

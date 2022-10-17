@@ -120,9 +120,9 @@ func (pcp *packetCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovide
 	return nil, fmt.Errorf("Could not find group for node: %s", node.Spec.ProviderID)
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (pcp *packetCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
-	return false, cloudprovider.ErrNotImplemented
+// NodeExists returns whether node exists in this cloud provider
+func (pcp *packetCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
+	return true, cloudprovider.ErrNotImplemented
 }
 
 // Pricing returns pricing model for this cloud provider or error if not available.

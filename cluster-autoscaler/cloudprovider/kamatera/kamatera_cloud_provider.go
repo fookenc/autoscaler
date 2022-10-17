@@ -70,8 +70,8 @@ func (k *kamateraCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovide
 	return nil, nil
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (k *kamateraCloudProvider) IsNodeDeleted(node *apiv1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (k *kamateraCloudProvider) NodeExists(node *apiv1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 

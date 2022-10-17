@@ -992,12 +992,11 @@ func (csr *ClusterStateRegistry) getCloudProviderDeletedNodes(allNodes []*apiv1.
 	nodesRemoved := make([]*apiv1.Node, 0)
 	currentCloudInstances := make(map[string]string, 0)
 	registeredNodes := make(map[string]*apiv1.Node, 0)
-	isNodeDeletedNotImplemented := true
 	if len(allNodes) > 0 {
-		_, err := csr.cloudProvider.IsNodeDeleted(allNodes[0])
-		// Check if the cloud provider implements isNodeDeleted
-		isNodeDeletedNotImplemented = errors.Is(err, cloudprovider.ErrNotImplemented)
-		if isNodeDeletedNotImplemented {
+		_, err := csr.cloudProvider.NodeExists(allNodes[0])
+		// Check if the cloud provider implements nodeExists method
+		nodeExistsNotImplemented := errors.Is(err, cloudprovider.ErrNotImplemented)
+		if nodeExistsNotImplemented {
 			// Fall-back to taint-based node deletion
 			for _, node := range allNodes {
 				if deletetaint.HasToBeDeletedTaint(node) {
@@ -1022,8 +1021,8 @@ func (csr *ClusterStateRegistry) getCloudProviderDeletedNodes(allNodes []*apiv1.
 				if _, found := registeredNodes[nodeName]; found && !cloudProviderFound {
 					// Confirm that node is deleted by cloud provider, instead of
 					// a not-autoscaled node
-					isDeleted, err := csr.cloudProvider.IsNodeDeleted(node)
-					if err == nil && isDeleted {
+					nodeExists, existsErr := csr.cloudProvider.NodeExists(node)
+					if existsErr == nil && !nodeExists {
 						nodesRemoved = append(nodesRemoved, node)
 					}
 				}
@@ -1040,8 +1039,8 @@ func (csr *ClusterStateRegistry) getCloudProviderDeletedNodes(allNodes []*apiv1.
 						if kubeNode, kubeNodeFound := registeredNodes[instance.Id]; kubeNodeFound {
 							// Confirm that node is deleted by cloud provider, instead of
 							// a not-autoscaled node
-							isDeleted, err := csr.cloudProvider.IsNodeDeleted(kubeNode)
-							if err == nil && isDeleted {
+							nodeExists, existsErr := csr.cloudProvider.NodeExists(kubeNode)
+							if existsErr == nil && !nodeExists {
 								nodesRemoved = append(nodesRemoved, kubeNode)
 							}
 						}

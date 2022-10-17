@@ -81,8 +81,8 @@ func (p *provider) NodeGroupForNode(node *corev1.Node) (cloudprovider.NodeGroup,
 	return ng, nil
 }
 
-// IsNodeDeleted returns whether node exists in this cloud provider
-func (p *provider) IsNodeDeleted(node *corev1.Node) (bool, error) {
+// NodeExists returns whether node exists in this cloud provider
+func (p *provider) NodeExists(node *corev1.Node) (bool, error) {
 	return false, cloudprovider.ErrNotImplemented
 }
 
