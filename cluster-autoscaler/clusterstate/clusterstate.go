@@ -686,7 +686,7 @@ func (csr *ClusterStateRegistry) updateCloudProviderDeletedNodes(deletedNodes []
 	csr.deletedNodes = result
 }
 
-//GetCloudProviderDeletedNodes returns a list of all nodes removed from cloud provider but registered in Kubernetes.
+// GetCloudProviderDeletedNodes returns a list of all nodes removed from cloud provider but registered in Kubernetes.
 func (csr *ClusterStateRegistry) GetCloudProviderDeletedNodes() []*apiv1.Node {
 	csr.Lock()
 	defer csr.Unlock()
